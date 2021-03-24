@@ -129,7 +129,7 @@ class Factura extends React.Component {
             });
             let xvalorIva = (xsubtotal * this.state.factura.porcentajeIva) / 100;
             let xtotalfactura = xsubtotal + xvalorIva;
-            this.setState({factura: {...this.state.factura, subtotal : xsubtotal, valorIva: xvalorIva, total: xtotalfactura}});
+            this.setState({factura: {...this.state.factura, subtotal : xsubtotal, valorIva: xvalorIva, valorTotal: xtotalfactura}});
             this.onClickAdd();
         }
     }
