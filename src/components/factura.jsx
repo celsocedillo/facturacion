@@ -41,6 +41,7 @@ class Factura extends React.Component {
             txtRuc: "",
             detCantidad : 0,
             detTotal: 0,
+            disButOkAgregar: true,
             factura: {clienteId: null,
                       fechaEmision: moment().toDate(), 
                       total: 0.00, 
@@ -49,7 +50,7 @@ class Factura extends React.Component {
                       valorIva: 0.00,
                       detalle: []
                     },
-            detalle: [{}]
+            detalle: []
         }
 
     }
@@ -66,7 +67,6 @@ class Factura extends React.Component {
                      });
 
         this.formRef.current.setFieldsValue({txtFechaFactura: moment(this.state.factura.fechaEmision).format("DD/MM/YYYY")});
-        //this.formAgregar.current.setFieldsValue({txtCantidad: 0});
     }
 
     // onChange = idx => e => {
@@ -87,20 +87,22 @@ class Factura extends React.Component {
 
       onChange = (e) => {
         console.log("frm", e.target);
-        //const { name, value } = e.target;
-        //console.log("input2", [e.target.name]);
         if (e.target.id === "txtCantidad" || e.target.id === "txtPrecio" || e.target.id === "txtDescuento"){
             const deta = {cant: (this.formAgregar.current.getFieldValue("txtCantidad") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtCantidad")),
                           prec: (this.formAgregar.current.getFieldValue("txtPrecio") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtPrecio")),
-                          desc: (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.setFieldsValue("txtDescuento")),
+                          desc: (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtDescuento")),
                          }
-            console.log(e.target.id, this.formAgregar.current.getFieldValue(e.target.id));
             let total = (deta.cant * deta.prec) - deta.desc;
-            //console.log("total", total);
-            //this.setState({detTotal: (this.formAgregar.current.getFieldValue("txtCantidad") * this.formAgregar.current.getFieldValue("txtPrecio") - this.formAgregar.current.getFieldValue("txtDescuento"))})
+            console.log("deta", deta);
+            console.log("total", total);
             this.formAgregar.current.setFieldsValue({txtTotalDetalle: total});
         }
 
+        const texto = (this.formAgregar.current.getFieldValue("txtDetalle") === undefined ? "" : this.formAgregar.current.getFieldValue("txtDetalle"));
+        const total = (this.formAgregar.current.getFieldValue("txtTotalDetalle") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtTotalDetalle"));
+        if (texto.length > 10 && total > 0 ){
+            this.setState({disButOkAgregar: false});
+        }
       }
 
     onClickAdd = (e) => {
@@ -118,7 +120,7 @@ class Factura extends React.Component {
             this.formAgregar.current.setFieldsValue({txtTotalDetalle: 0, txtCantidad: 0, txtPrecio: 0, txtDescuento: 0, txtDetalle: ""});
         }
         //
-        this.setState({modAgregar: true});
+        this.setState({modAgregar: true, disButOkAgregar: true});
         setTimeout(() => {
             this.focDetalle.current.focus();
         }, 200)
@@ -214,8 +216,19 @@ class Factura extends React.Component {
     }
 
     async onAceptarDetalle(values){
-        //console.log("aceptar", values.txtDetalle);
-        console.log("aceptar", this.formAgregar.current.getFieldValue("txtDetalle"));
+        
+        let detalle = {
+            detalle : this.formAgregar.current.getFieldValue("txtDetalle"),
+            cantidad : this.formAgregar.current.getFieldValue("txtCantidad"),
+            precio : this.formAgregar.current.getFieldValue("txtPrecio"),
+            descuento : (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtDescuento")),
+            total : this.formAgregar.current.getFieldValue("txtTotalDetalle"),
+        }
+        let tabDetalle = this.state.detalle;
+        tabDetalle.push(detalle);
+        //this.setState({detalle: [...this.setState.detalle, this.state.detalle.push(detalle)]});
+        this.setState({detalle: tabDetalle, modAgregar: false});
+        console.log("detalle", this.state.detalle);
     }
 
     render(){
@@ -362,6 +375,7 @@ class Factura extends React.Component {
                 visible={this.state.modAgregar}
                 onOk={(values) => this.onAceptarDetalle(values)}
                 onCancel={() => this.setState({modAgregar: !this.state.modAgregar})}
+                okButtonProps={{disabled: this.state.disButOkAgregar}}
            >
                <Form 
                     onFinish={(values) => this.onAceptarDetalle(values)}
