@@ -1,11 +1,12 @@
-import React, { Fragment } from "react";
+import React, { Fragment, useState, createRef } from "react";
 import { Link } from "react-router-dom";
 import moment from 'moment';
 //import NumberFormat from "react-number-format";
 
-import { Card, Form, Input, Select, Row, Col, Button, 
+import { Card, Form, Input,  InputNumber,  Select, Row, Col, Button,
          DatePicker, Table, AutoComplete, notification, 
          Modal, Descriptions, message, Spin, Alert, Space } from 'antd';
+import { FormInstance } from 'antd/lib/form';
 import { PlusCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUserPlus } from '@fortawesome/free-solid-svg-icons';
@@ -25,12 +26,21 @@ class Factura extends React.Component {
     formRef = React.createRef();
     focButton = React.createRef();
     focAuto = React.createRef();
+    
+    focCantidad = React.createRef();
+
+
+    formAgregar = React.createRef();
         
 
     constructor(props) {
         super(props);
+        this.focDetalle = React.createRef();
         this.state = {
+            modAgregar: false,
             txtRuc: "",
+            detCantidad : 0,
+            detTotal: 0,
             factura: {clienteId: null,
                       fechaEmision: moment().toDate(), 
                       total: 0.00, 
@@ -56,34 +66,64 @@ class Factura extends React.Component {
                      });
 
         this.formRef.current.setFieldsValue({txtFechaFactura: moment(this.state.factura.fechaEmision).format("DD/MM/YYYY")});
+        //this.formAgregar.current.setFieldsValue({txtCantidad: 0});
     }
 
-    onChange = idx => e => {
-        const { name, value } = e.target;
-        const detalle = [...this.state.detalle];
-        let xtotal = 0;
-        // if (name === "pvp"){
-        //     xtotal = this.state.detalle[idx].cantidad * value;
-        // }
-        // detalle[idx] = {...detalle[idx], [name]:value, total: xtotal};
-        detalle[idx] = {...detalle[idx], [name]:value};
-        this.setState({
-          detalle
-        });
-        console.log("tabla", this.state.detalle);
+    // onChange = idx => e => {
+    //     const { name, value } = e.target;
+    //     console.log("input", [name]);
+    //     const detalle = [...this.state.detalle];
+    //     let xtotal = 0;
+    //     // if (name === "pvp"){
+    //     //     xtotal = this.state.detalle[idx].cantidad * value;
+    //     // }
+    //     // detalle[idx] = {...detalle[idx], [name]:value, total: xtotal};
+    //     detalle[idx] = {...detalle[idx], [name]:value};
+    //     this.setState({
+    //       detalle
+    //     });
 
-      };
+    //   };
 
-    onClickAdd = () => {
-        const item = {
-            descripcion: "",
-            cantidad: 0,
-            pvp: 0,
-            total: 0
-        };
-        this.setState({
-            detalle: [...this.state.detalle, item]
-        });
+      onChange = (e) => {
+        console.log("frm", e.target);
+        //const { name, value } = e.target;
+        //console.log("input2", [e.target.name]);
+        if (e.target.id === "txtCantidad" || e.target.id === "txtPrecio" || e.target.id === "txtDescuento"){
+            const deta = {cant: (this.formAgregar.current.getFieldValue("txtCantidad") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtCantidad")),
+                          prec: (this.formAgregar.current.getFieldValue("txtPrecio") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtPrecio")),
+                          desc: (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.setFieldsValue("txtDescuento")),
+                         }
+            console.log(e.target.id, this.formAgregar.current.getFieldValue(e.target.id));
+            let total = (deta.cant * deta.prec) - deta.desc;
+            //console.log("total", total);
+            //this.setState({detTotal: (this.formAgregar.current.getFieldValue("txtCantidad") * this.formAgregar.current.getFieldValue("txtPrecio") - this.formAgregar.current.getFieldValue("txtDescuento"))})
+            this.formAgregar.current.setFieldsValue({txtTotalDetalle: total});
+        }
+
+      }
+
+    onClickAdd = (e) => {
+        // const item = {
+        //     descripcion: "",
+        //     cantidad: 0,
+        //     pvp: 0,
+        //     total: 0
+        // };
+        // this.setState({
+        //     detalle: [...this.state.detalle, item]
+        // });
+        console.log("frm", this.formAgregar.current);
+        if (this.formAgregar.current !== null){
+            this.formAgregar.current.setFieldsValue({txtTotalDetalle: 0, txtCantidad: 0, txtPrecio: 0, txtDescuento: 0, txtDetalle: ""});
+        }
+        //
+        this.setState({modAgregar: true});
+        setTimeout(() => {
+            this.focDetalle.current.focus();
+        }, 200)
+        
+        
     };
 
     onKeyPress = (e) =>{
@@ -171,6 +211,11 @@ class Factura extends React.Component {
           
         });
 
+    }
+
+    async onAceptarDetalle(values){
+        //console.log("aceptar", values.txtDetalle);
+        console.log("aceptar", this.formAgregar.current.getFieldValue("txtDetalle"));
     }
 
     render(){
@@ -263,15 +308,14 @@ class Factura extends React.Component {
                                     {this.state.detalle.map((item, idx) => (
                                         <tr>
                                             <td>
-                                                <Input type="text" name="descripcion" value={this.state.detalle[idx].descripcion} onChange={this.onChange(idx)}/>
+                                                {/* <Input type="text" name="descripcion" value={this.state.detalle[idx].descripcion} onChange={this.onChange(idx)}/> */}
+                                            </td>
+                                            <td width="45px">
+                                                {/* <Input type="number" style={{textAlign: "right"}} name="cantidad" value={this.state.detalle[idx].cantidad} onChange={this.onChange(idx)}/> */}
 
                                             </td>
                                             <td width="45px">
-                                                <Input type="number" style={{textAlign: "right"}} name="cantidad" value={this.state.detalle[idx].cantidad} onChange={this.onChange(idx)}/>
-
-                                            </td>
-                                            <td width="45px">
-                                                <Input type="number" name="pvp" style={{textAlign: "right"}} value={this.state.detalle[idx].pvp} onChange={this.onChange(idx)} onPressEnter={this.onEnterPvp(idx)}/>
+                                                {/* <Input type="number" name="pvp" style={{textAlign: "right"}} value={this.state.detalle[idx].pvp} onChange={this.onChange(idx)} onPressEnter={this.onEnterPvp(idx)}/> */}
 
                                             </td>
                                             <td width="45px" style={{textAlign: "right"}}>
@@ -309,6 +353,42 @@ class Factura extends React.Component {
                     </Col>
                 </Row>
             </Card>
+        
+            
+
+           <Modal
+                title="Agregar detalle a factura"
+                style={{top:20}}
+                visible={this.state.modAgregar}
+                onOk={(values) => this.onAceptarDetalle(values)}
+                onCancel={() => this.setState({modAgregar: !this.state.modAgregar})}
+           >
+               <Form 
+                    onFinish={(values) => this.onAceptarDetalle(values)}
+                    ref={this.formAgregar}
+               >
+                   <Form.Item name="txtDetalle" label="Detalle" rules={[{ required: true }]} labelCol={{span: 4}} >
+                      <TextArea rows={2} ref={this.focDetalle} onChange={this.onChange} />
+                   </Form.Item>
+                   <Form.Item name="txtCantidad" label="Cantidad" rules={[{ required: true }]} labelCol={{span: 16}}>
+                       <Input type="number" style={{width: 150,textAlign: 'right'}} onChange={this.onChange} placeholder="0"></Input>
+                      
+                   </Form.Item>
+                   <Form.Item name="txtPrecio" label="Precio Unitario" rules={[{ required: true }]} labelCol={{span: 16}}>
+                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue="0" onChange={this.onChange} />
+                   </Form.Item>
+                   <Form.Item name="txtDescuento" label="Descuento" rules={[{ required: true }]} labelCol={{span: 16}}>
+                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={0} onChange={this.onChange} />
+                   </Form.Item>
+                   <Form.Item name="txtTotalDetalle" label="Total" labelCol={{span: 16}}>
+                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={this.state.detTotal} value={this.state.detTotal} disabled/>
+                   </Form.Item>
+
+                   
+                    </Form>
+           </Modal>
+           
+        
         </Fragment>
     
         )
