@@ -1,7 +1,7 @@
 import React, { Fragment, useState, createRef } from "react";
 import { Link } from "react-router-dom";
 import moment from 'moment';
-//import NumberFormat from "react-number-format";
+import NumberFormat from "react-number-format";
 
 import { Card, Form, Input,  InputNumber,  Select, Row, Col, Button,
          DatePicker, Table, AutoComplete, notification, 
@@ -9,7 +9,7 @@ import { Card, Form, Input,  InputNumber,  Select, Row, Col, Button,
 import { FormInstance } from 'antd/lib/form';
 import { PlusCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUserPlus } from '@fortawesome/free-solid-svg-icons';
+import { faUserPlus, faTrash, faEdit } from '@fortawesome/free-solid-svg-icons';
 
 
 const{TextArea} = Input;
@@ -215,7 +215,7 @@ class Factura extends React.Component {
 
     }
 
-    async onAceptarDetalle(values){
+    async onAceptarDetalle () {
         
         let detalle = {
             detalle : this.formAgregar.current.getFieldValue("txtDetalle"),
@@ -224,11 +224,27 @@ class Factura extends React.Component {
             descuento : (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtDescuento")),
             total : this.formAgregar.current.getFieldValue("txtTotalDetalle"),
         }
-        let tabDetalle = this.state.detalle;
-        tabDetalle.push(detalle);
-        //this.setState({detalle: [...this.setState.detalle, this.state.detalle.push(detalle)]});
-        this.setState({detalle: tabDetalle, modAgregar: false});
-        console.log("detalle", this.state.detalle);
+
+        let tabDetalle = [...this.state.detalle, detalle];
+        
+        await this.setState({detalle: tabDetalle, modAgregar: false});
+        this.calcularTotales();
+    }
+
+    async calcularTotales(){
+        let subtotal = 0;
+        let valorIva = 0;
+        let porcentajeIva = 12;
+        let total = 0;
+        console.log("calcula detalle", this.state.detalle);
+        this.state.detalle.map( item => {
+            console.log("item", item);
+            subtotal += (item.cantidad * item.precio)
+        })
+        console.log("subtotal", subtotal);
+        valorIva = subtotal * (porcentajeIva / 100);
+        total = subtotal + valorIva
+        this.setState({factura: {...this.state.factura, subtotal: subtotal, valorIva: valorIva, total: total}})
     }
 
     render(){
@@ -303,71 +319,69 @@ class Factura extends React.Component {
                 </Form>
             </Card>
 
+{/* Detalle de la factura */}
+
             <Card title="Detalle" >
                 <button onClick={this.onClickAdd}>Agregar</button>
-                <div className="ant-table ant-table-small">
-                    <div className="ant-table-container">
-                        <div className="ant-table-content" style={{height:200, overflowY:"scroll"}}>
-                            <table style={{tableLayout: "auto"}}>
-                                <thead className="ant-table-thead">
-                                    <tr>
-                                        <th  className="ant-table-cell">Descripcion</th>
-                                        <th width="95px" className="ant-table-cell" style={{textAlign: "right"}}>Cantidad</th>
-                                        <th width="95px" className="ant-table-cell" style={{textAlign: "right"}}>PVP</th>
-                                        <th width="95px" className="ant-table-cell" style={{textAlign: "right"}}>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {this.state.detalle.map((item, idx) => (
-                                        <tr>
-                                            <td>
-                                                {/* <Input type="text" name="descripcion" value={this.state.detalle[idx].descripcion} onChange={this.onChange(idx)}/> */}
-                                            </td>
-                                            <td width="45px">
-                                                {/* <Input type="number" style={{textAlign: "right"}} name="cantidad" value={this.state.detalle[idx].cantidad} onChange={this.onChange(idx)}/> */}
+                <Table
+                    size="small"
+                    dataSource={this.state.detalle}
+                    pagination={false}
+                    scroll={{y: window.innerHeight - 460 }}
+                    key="detalle"
 
-                                            </td>
-                                            <td width="45px">
-                                                {/* <Input type="number" name="pvp" style={{textAlign: "right"}} value={this.state.detalle[idx].pvp} onChange={this.onChange(idx)} onPressEnter={this.onEnterPvp(idx)}/> */}
+                >
+                    <Column title="Detalle" dataIndex="detalle" key="detalle" >
+                    </Column>
 
-                                            </td>
-                                            <td width="45px" style={{textAlign: "right"}}>
-                                                {this.state.detalle[idx].total}
-                                            </td>
-                                        </tr>
-                                    ))
-                                    }
-                                </tbody>
-                                
-                            </table>
+                    <Column title="Cantidad" dataIndex="cantidad" width={100} align="right" >
+                    </Column>
 
-                        </div>
+                    <Column title="Precio" dataIndex="precio" width={100} align="right">
+                    </Column>
 
-                    </div>
+                    <Column title="Descuento" dataIndex="descuento" width={100} align="right">
+                    </Column>
 
-                </div>
+                    <Column title="Total" dataIndex="total" width={100} align="right">
+                    </Column>
 
+                    <Column title="" width={20} align="center" render={() =>  <FontAwesomeIcon icon={faEdit}></FontAwesomeIcon>}>
+                    </Column>
+
+
+                    <Column title="" width={20} align="center" render={() =>  <FontAwesomeIcon icon={faTrash}></FontAwesomeIcon>}>
+                    </Column>
+
+
+
+                </Table>
             </Card>
-            
+
+{/* Totales de la factura             */}
+
             <Card>
                 <Row gutter={6}>
-                    <Col span={16}>
+                    <Col span={14}>
                         <Form.Item layout="vertical" name="txtObservacion" >
                         <Input.TextArea placeholder="Observación" autoSize={{minRows: 6,  maxRows: 10}} style={{height:"500px"}}></Input.TextArea>
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
-                        <Descriptions size="small" >
-                        <Descriptions.Item label="SubTotal" span={3} style={{textAlign: "right"}}>{this.state.factura.subtotal} </Descriptions.Item>
-                        <Descriptions.Item label="Iva %" span={3}> {this.state.factura.porcentajeIva}</Descriptions.Item>
-                        <Descriptions.Item label="Valor Iva" span={3}>{this.state.factura.valorIva}</Descriptions.Item>
-                        <Descriptions.Item label="Total" span={3}>{this.state.factura.total}</Descriptions.Item>
+                    <Col span={10}>
+                        <Descriptions size="small" bordered contentStyle={{fontSize:"22px", paddingBottom: "5px", fontWeight: "bold"}} >
+                            <Descriptions.Item label="SubTotal" span={3} labelStyle={{width:"150px"}} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>
+                                <NumberFormat value={this.state.factura.subtotal} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
+                                {} 
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Iva %" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px" }} > {this.state.factura.porcentajeIva}</Descriptions.Item>
+                            <Descriptions.Item label="Valor Iva" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>{this.state.factura.valorIva}</Descriptions.Item>
+                            <Descriptions.Item label="Total" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>{this.state.factura.total}</Descriptions.Item>
                         </Descriptions>
                     </Col>
                 </Row>
             </Card>
         
-            
+{/* Modal para agregar detalle a la factura */}
 
            <Modal
                 title="Agregar detalle a factura"
