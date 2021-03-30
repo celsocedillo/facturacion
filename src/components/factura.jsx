@@ -9,7 +9,7 @@ import { Card, Form, Input,  InputNumber,  Select, Row, Col, Button,
 import { FormInstance } from 'antd/lib/form';
 import { PlusCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUserPlus, faTrash, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { faUserPlus, faTrash, faEdit, faPlusCircle, faSave } from '@fortawesome/free-solid-svg-icons';
 
 
 const{TextArea} = Input;
@@ -42,12 +42,15 @@ class Factura extends React.Component {
             detCantidad : 0,
             detTotal: 0,
             disButOkAgregar: true,
+            disCerrarFactura: true,
+            lstTarifasIva: [],
             factura: {clienteId: null,
                       fechaEmision: moment().toDate(), 
-                      total: 0.00, 
-                      subtotal: 0.00, 
+                      valorTotal: 0.00, 
+                      valorSubtotal: 0.00, 
                       porcentajeIva: 12, 
                       valorIva: 0.00,
+                      valorDescuento: 0.00,
                       detalle: []
                     },
             detalle: []
@@ -67,6 +70,11 @@ class Factura extends React.Component {
                      });
 
         this.formRef.current.setFieldsValue({txtFechaFactura: moment(this.state.factura.fechaEmision).format("DD/MM/YYYY")});
+
+        //Buscar las tarifas de IVA
+        this.buscarTarifasIva();
+
+    
     }
 
     // onChange = idx => e => {
@@ -93,8 +101,6 @@ class Factura extends React.Component {
                           desc: (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtDescuento")),
                          }
             let total = (deta.cant * deta.prec) - deta.desc;
-            console.log("deta", deta);
-            console.log("total", total);
             this.formAgregar.current.setFieldsValue({txtTotalDetalle: total});
         }
 
@@ -106,18 +112,8 @@ class Factura extends React.Component {
       }
 
     onClickAdd = (e) => {
-        // const item = {
-        //     descripcion: "",
-        //     cantidad: 0,
-        //     pvp: 0,
-        //     total: 0
-        // };
-        // this.setState({
-        //     detalle: [...this.state.detalle, item]
-        // });
-        console.log("frm", this.formAgregar.current);
         if (this.formAgregar.current !== null){
-            this.formAgregar.current.setFieldsValue({txtTotalDetalle: 0, txtCantidad: 0, txtPrecio: 0, txtDescuento: 0, txtDetalle: ""});
+            this.formAgregar.current.setFieldsValue({txtTotalDetalle: 0, txtCantidad: 0, txtPrecio: 0, txtDescuento: 0, txtDetalle: "", lstTarifaIva: 12});
         }
         //
         this.setState({modAgregar: true, disButOkAgregar: true});
@@ -140,6 +136,23 @@ class Factura extends React.Component {
         this.buscarCliente(this.formRef.current.getFieldValue('txtRucCedula'));
     }
 
+    async buscarTarifasIva(){
+        const xres = await fetch(`${this.servidorAPI}tarifasIva`)
+                     .then(async response => {
+                         const data = await response.json();
+                        if (response.status == 201){
+                            
+                            console.log("tarifas", data)
+                            data.data.map(item => {
+                                this.setState({lstTarifasIva: [...this.state.lstTarifasIva, {id: item.codigo, label: item.tarifa}]});
+                            })
+
+                            console.log("lst", this.state.lstTarifasIva);
+                        }
+                     });
+
+    }
+
     async buscarCliente(pruc) {
         const xres = await fetch(`${this.servidorAPI}cliente/${pruc}`)
                      .then(async response => {
@@ -153,6 +166,7 @@ class Factura extends React.Component {
                                 this.formRef.current.setFieldsValue({txtNombreCliente: data.data.nombres})
                                 this.formRef.current.setFieldsValue({txtDireccion: data.data.direccion})
                                 console.log("resultado", data.data.nombres);
+                                this.habilitaCerrarFactura();
                             }
 
                         }
@@ -179,21 +193,12 @@ class Factura extends React.Component {
 
     onGrabar = async () => {
         await this.setState({factura: {...this.state.factura, detalle: this.state.detalle}});
-        //this.setState({factura: {...this.state.factura, nuevo: 0}});
-        console.log("enivar", this.state.factura);
-        console.log("detalle", this.state.detalle);
-
         const insert = await fetch(`${this.servidorAPI}factura/`, {method: "post", headers: {'Content-Type':'application/json'}, body: JSON.stringify(this.state.factura)})
         .then(async (response) => {
-          //console.log("response", response);  
           let resultado = await response.json();
           resultado.data.detalle = [];
           if (response.status === 201){
-              console.log("ok");
               this.setState({acta: await resultado.data, registroNuevo: false});
-              //console.log("acta", this.state.acta);
-              //this.setState({acta: {...this.state.acta, detalle: []}});
-              //console.log("acta", this.state.acta);
               notification['success']({
                   message: '',
                   description: `Acta grabada con exito`
@@ -221,6 +226,7 @@ class Factura extends React.Component {
             detalle : this.formAgregar.current.getFieldValue("txtDetalle"),
             cantidad : this.formAgregar.current.getFieldValue("txtCantidad"),
             precio : this.formAgregar.current.getFieldValue("txtPrecio"),
+            tarifaIva:  (this.formAgregar.current.getFieldValue("lstTarifaIva") === undefined ? 2 : this.formAgregar.current.getFieldValue("lstTarifaIva")),
             descuento : (this.formAgregar.current.getFieldValue("txtDescuento") === undefined ? 0 : this.formAgregar.current.getFieldValue("txtDescuento")),
             total : this.formAgregar.current.getFieldValue("txtTotalDetalle"),
         }
@@ -228,7 +234,9 @@ class Factura extends React.Component {
         let tabDetalle = [...this.state.detalle, detalle];
         
         await this.setState({detalle: tabDetalle, modAgregar: false});
-        this.calcularTotales();
+        await this.calcularTotales();
+        console.log("detalle", this.state.detalle);
+        this.habilitaCerrarFactura();
     }
 
     async calcularTotales(){
@@ -236,15 +244,22 @@ class Factura extends React.Component {
         let valorIva = 0;
         let porcentajeIva = 12;
         let total = 0;
-        console.log("calcula detalle", this.state.detalle);
+        let descuento= 0;
         this.state.detalle.map( item => {
-            console.log("item", item);
-            subtotal += (item.cantidad * item.precio)
+            descuento += parseFloat(item.descuento);
+            subtotal += ((parseInt(item.cantidad) * parseFloat(item.precio)) - item.descuento)
         })
-        console.log("subtotal", subtotal);
-        valorIva = subtotal * (porcentajeIva / 100);
-        total = subtotal + valorIva
-        this.setState({factura: {...this.state.factura, subtotal: subtotal, valorIva: valorIva, total: total}})
+        valorIva = parseFloat((subtotal * (porcentajeIva / 100)).toFixed(2));
+        total = parseFloat((subtotal + valorIva).toFixed(2));
+        this.setState({factura: {...this.state.factura, valorSubtotal: subtotal, valorIva: valorIva, valorTotal: total, valorDescuento: descuento}})
+    }
+
+    habilitaCerrarFactura(){
+        console.log("evalua cerrar", this.state.factura, this.state.detalle.length);
+        if (this.state.factura.clienteId !== null && this.state.detalle.length > 0 && this.state.factura.total > 0 ) {
+            this.setState({disCerrarFactura: false});
+            console.log("habilitar", this.state.disCerrarFactura)
+        }
     }
 
     render(){
@@ -253,7 +268,6 @@ class Factura extends React.Component {
         
         return(
         <Fragment>
-
             <Card title="Factura" loading={this.state.cardLoading}  >
                 <Form 
                     layout="horizontal"
@@ -313,7 +327,7 @@ class Factura extends React.Component {
                     </Row>
                     <Row>
                         <Col span={24}>
-                            <Button type="primary" onClick={this.onGrabar}>Grabar</Button>
+                            <Button type="primary" disabled={this.state.disCerrarFactura} onClick={this.onGrabar} icon={<FontAwesomeIcon icon={faSave}></FontAwesomeIcon>}>  Grabar</Button>
                         </Col>
                     </Row>
                 </Form>
@@ -322,7 +336,9 @@ class Factura extends React.Component {
 {/* Detalle de la factura */}
 
             <Card title="Detalle" >
-                <button onClick={this.onClickAdd}>Agregar</button>
+                <Space>
+                    <Button type="text" size="small" icon={<FontAwesomeIcon icon={faPlusCircle}></FontAwesomeIcon>} onClick={this.onClickAdd}>  Agregar</Button>
+                </Space>
                 <Table
                     size="small"
                     dataSource={this.state.detalle}
@@ -334,16 +350,22 @@ class Factura extends React.Component {
                     <Column title="Detalle" dataIndex="detalle" key="detalle" >
                     </Column>
 
-                    <Column title="Cantidad" dataIndex="cantidad" width={100} align="right" >
+                    <Column title="Cantidad" dataIndex="cantidad" width={100} align="right">
                     </Column>
 
-                    <Column title="Precio" dataIndex="precio" width={100} align="right">
+                    <Column title="Precio" width={100} align="right"
+                        render={rowData => <NumberFormat value={rowData.precio} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>}
+                    >
                     </Column>
 
-                    <Column title="Descuento" dataIndex="descuento" width={100} align="right">
+                    <Column title="Descuento" width={100} align="right"
+                        render={rowData => <NumberFormat value={rowData.descuento} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>}                        
+                    >
                     </Column>
 
-                    <Column title="Total" dataIndex="total" width={100} align="right">
+                    <Column title="Total" width={100} align="right"
+                        render={rowData => <NumberFormat value={rowData.total} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>}
+                    >
                     </Column>
 
                     <Column title="" width={20} align="center" render={() =>  <FontAwesomeIcon icon={faEdit}></FontAwesomeIcon>}>
@@ -368,14 +390,19 @@ class Factura extends React.Component {
                         </Form.Item>
                     </Col>
                     <Col span={10}>
-                        <Descriptions size="small" bordered contentStyle={{fontSize:"22px", paddingBottom: "5px", fontWeight: "bold"}} >
+                        <Descriptions size="small" bordered contentStyle={{fontSize:"18px", paddingBottom: "2px", fontWeight: "bold"}} >
                             <Descriptions.Item label="SubTotal" span={3} labelStyle={{width:"150px"}} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>
-                                <NumberFormat value={this.state.factura.subtotal} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
-                                {} 
+                                <NumberFormat value={this.state.factura.valorSubtotal} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
                             </Descriptions.Item>
-                            <Descriptions.Item label="Iva %" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px" }} > {this.state.factura.porcentajeIva}</Descriptions.Item>
-                            <Descriptions.Item label="Valor Iva" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>{this.state.factura.valorIva}</Descriptions.Item>
-                            <Descriptions.Item label="Total" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>{this.state.factura.total}</Descriptions.Item>
+                            <Descriptions.Item label="Iva %" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px" }} >
+                                 <NumberFormat value={this.state.factura.porcentajeIva} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Valor Iva" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>                                
+                                <NumberFormat value={this.state.factura.valorIva} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Total" span={3} contentStyle={{display:"block",  textAlign: "right", paddingRight: "5px"}}>
+                                <NumberFormat value={this.state.factura.valorTotal} displayType={'text'} thousandSeparator={true} decimalScale={2} fixedDecimalScale={true}></NumberFormat>
+                            </Descriptions.Item>
                         </Descriptions>
                     </Col>
                 </Row>
@@ -407,6 +434,17 @@ class Factura extends React.Component {
                    </Form.Item>
                    <Form.Item name="txtDescuento" label="Descuento" rules={[{ required: true }]} labelCol={{span: 16}}>
                       <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={0} onChange={this.onChange} />
+                   </Form.Item>
+                   <Form.Item name="lstTarifaIva" label="Tarifa IVA" rules={[{ required: true }]} labelCol={{span: 16}}>
+                      <Select defaultValue="2">
+                          {
+                              this.state.lstTarifasIva.map(item => (
+                                <Select.Option value={item.id}>
+                                    {item.label}
+                                </Select.Option>
+                              ))
+                          }
+                      </Select>
                    </Form.Item>
                    <Form.Item name="txtTotalDetalle" label="Total" labelCol={{span: 16}}>
                       <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={this.state.detTotal} value={this.state.detTotal} disabled/>
