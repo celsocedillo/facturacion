@@ -10,6 +10,7 @@ import { FormInstance } from 'antd/lib/form';
 import { PlusCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUserPlus, faTrash, faEdit, faPlusCircle, faSave } from '@fortawesome/free-solid-svg-icons';
+import Cliente from './cliente'
 
 
 const{TextArea} = Input;
@@ -45,6 +46,7 @@ class Factura extends React.Component {
             disCerrarFactura: true,
             listaTarifasIva: [],
             lstTarifasIva: [],
+            visCliente: false,
             factura: {clienteId: null,
                       fecha: moment().toDate(), 
                       valorTotal: 0.00, 
@@ -70,6 +72,7 @@ class Factura extends React.Component {
                      });
 
         this.formRef.current.setFieldsValue({txtFechaFactura: moment(this.state.factura.fechaEmision).format("DD/MM/YYYY")});
+        
 
         //Buscar las tarifas de IVA
         this.buscarTarifasIva();
@@ -275,6 +278,25 @@ class Factura extends React.Component {
         }
     }
 
+    onClickAddCliente =()=> {
+        this.setState({visCliente: true});
+        console.log("cliente", this.state.visCliente);
+        
+    }
+
+    onClienteChange = (value, cliente) => {
+        this.setState({visCliente: value});
+        if (cliente !== null){
+            this.setState({factura: {...this.state.factura, clienteId: cliente.id}});
+            this.formRef.current.setFieldsValue({txtNombreCliente: cliente.nombres})
+            this.formRef.current.setFieldsValue({txtDireccion: cliente.direccion})
+            this.formRef.current.setFieldsValue({txtRucCedula: cliente.rucCedula})
+            this.habilitaCerrarFactura();
+
+        }
+        
+    }
+
     render(){
         //let lista=this.state.acta.detalle
         let {loading, lstFiltro, lstOptions, selectedRowKeys } = this.state
@@ -323,7 +345,7 @@ class Factura extends React.Component {
                                     </Input.Group>
                                     </Col>
                                     <Col span={2}>
-                                        <Button size="small"><FontAwesomeIcon icon={faUserPlus}></FontAwesomeIcon></Button>
+                                        <Button size="small" onClick={this.onClickAddCliente}><FontAwesomeIcon icon={faUserPlus}></FontAwesomeIcon></Button>
                                     </Col>
 
                                     </Row>
@@ -438,18 +460,18 @@ class Factura extends React.Component {
                    <Form.Item name="txtDetalle" label="Detalle" rules={[{ required: true }]} labelCol={{span: 4}} >
                       <TextArea rows={2} ref={this.focDetalle} onChange={this.onChange} />
                    </Form.Item>
-                   <Form.Item name="txtCantidad" label="Cantidad" rules={[{ required: true }]} labelCol={{span: 16}}>
-                       <Input type="number" style={{width: 150,textAlign: 'right'}} onChange={this.onChange} placeholder="0"></Input>
+                   <Form.Item name="txtCantidad" label="Cantidad" rules={[{ required: true }]} labelCol={{span: 14}}>
+                       <Input type="number" style={{width: "100%",textAlign: 'right'}} onChange={this.onChange} placeholder="0"></Input>
                       
                    </Form.Item>
-                   <Form.Item name="txtPrecio" label="Precio Unitario" rules={[{ required: true }]} labelCol={{span: 16}}>
-                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue="0" onChange={this.onChange} />
+                   <Form.Item name="txtPrecio" label="Precio Unitario" rules={[{ required: true }]} labelCol={{span: 14}}>
+                      <Input type="number" style={{width: "100%", textAlign: 'right'}} defaultValue="0" onChange={this.onChange} />
                    </Form.Item>
-                   <Form.Item name="txtDescuento" label="Descuento" rules={[{ required: true }]} labelCol={{span: 16}}>
-                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={0} onChange={this.onChange} />
+                   <Form.Item name="txtDescuento" label="Descuento" rules={[{ required: true }]} labelCol={{span: 14}}>
+                      <Input type="number" style={{width: "100%", textAlign: 'right'}} defaultValue={0} onChange={this.onChange} />
                    </Form.Item>
-                   <Form.Item name="lstTarifaIva" label="Tarifa IVA" rules={[{ required: true }]} labelCol={{span: 16}}>
-                      <Select defaultValue={"2"}  >
+                   <Form.Item name="lstTarifaIva" label="Tarifa IVA" rules={[{ required: true }]} labelCol={{span: 14}}>
+                      <Select defaultValue={"2"} style={{width: "100%", textAlign: 'right'}}  >
                           {
                               this.state.lstTarifasIva.map(item => (
                                 <Select.Option value={item.id} key={item.codigo}>
@@ -459,14 +481,17 @@ class Factura extends React.Component {
                           }
                       </Select>
                    </Form.Item>
-                   <Form.Item name="txtTotalDetalle" label="Total" labelCol={{span: 16}}>
-                      <Input type="number" style={{width: 150, textAlign: 'right'}} defaultValue={this.state.detTotal} value={this.state.detTotal} disabled/>
+                   <Form.Item name="txtTotalDetalle" label="Total" labelCol={{span: 14}}>
+                      <Input type="number" style={{width: "100%", textAlign: 'right'}} defaultValue={this.state.detTotal} value={this.state.detTotal} disabled/>
                    </Form.Item>
 
                    
                     </Form>
            </Modal>
            
+           <Cliente miVisible={this.state.visCliente} onModalChange={this.onClienteChange}>
+
+           </Cliente>
         
         </Fragment>
     
